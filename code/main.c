@@ -332,6 +332,7 @@ int main()
                 } break;
             }
         }
+        sleep_ms(100);
     }
 
     SDL_Quit();

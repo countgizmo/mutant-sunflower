@@ -9,6 +9,8 @@
 #define local_persist static
 #define global_variable static
 #define Pi32 3.14159265359
+#define WINDOW_WIDTH 1280
+#define WINDOW_HEIGHT 680
 
 #define array_count(a) (sizeof(a)/(sizeof((a)[0])))
 
@@ -24,14 +26,18 @@ typedef float real32;
 typedef double real64;
 
 global_variable bool running = true;
-global_variable bool paused = false;
+global_variable bool paused = true;
 global_variable SDL_AudioDeviceID audio_dev;
+global_variable SDL_Color font_color = {255, 99, 99};
+global_variable SDL_Color aux_font_color = {163, 47, 128};
+
+enum font_type {small_font, normal_font, big_font};
 
 typedef struct
 {
+    int16 *samples;
     int samples_per_second;
     int samples_count;
-    int16 *samples;
     int tone_hz;
     int tone_volume;
     int len;
@@ -51,12 +57,31 @@ typedef struct
 
 typedef struct
 {
+    SDL_Surface *back_buffer;
+    SDL_Window *window;
+    TTF_Font *fonts[3];
+} render_context_t;
+
+typedef struct
+{
     int ticks;
     int seconds;
     int minutes;
     app_sound_buffer sound_buffer;
     app_config_t app_config;
+    render_context_t render_context;
 } app_state;
+
+
+
+global_variable int width = 1280, height = 680;
+
+global_variable SDL_Rect update_rect = {
+    .x = 0,
+    .y = 200,
+    .w = WINDOW_WIDTH,
+    .h = WINDOW_HEIGHT - 100
+};
 
 #include "ui.c"
 #include "q_and_d.c"
@@ -123,34 +148,57 @@ sleep_ms(int milliseconds)
     sleep_time.tv_nsec = nanoseconds;
     sleep_time.tv_sec = 0;
     nanosleep(&sleep_time, NULL);
-    // struct timespec start, end;
-    // clock_gettime(CLOCK_MONOTONIC_RAW, &start);
-    // clock_gettime(CLOCK_MONOTONIC_RAW, &end);
-    
-    // while (end.tv_nsec - start.tv_nsec < nanoseconds)
-    // {
-    //     clock_gettime(CLOCK_MONOTONIC_RAW, &end);
-    // }
 }
 
-void *timer_update(void *vargp)
+SDL_Rect
+get_text_position(TTF_Font *font, const char *text)
 {
-    app_state *state = (app_state *)vargp;
-    int minutes = 0;
+    int big_text_width;
+    int big_text_height;
+    TTF_SizeText(font, text, &big_text_width, &big_text_height);
 
-    while (running)
+    SDL_Rect text_position;
+    text_position.x = (WINDOW_WIDTH / 2) - (big_text_width / 2);
+    text_position.y = (WINDOW_HEIGHT / 2) - (big_text_height / 2);
+    text_position.w = big_text_width;
+    text_position.h = big_text_height;
+
+    return text_position;
+}
+
+void
+render(app_state state, SDL_Rect update_rect)
+{
+    char string_buffer[10];
+    Uint32 background_color = SDL_MapRGB(state.render_context.back_buffer->format, 0, 2, 114);
+
+    sprintf(string_buffer, "%02d:%02d", state.minutes, abs(state.seconds));
+    SDL_Surface *text_surface = TTF_RenderText_Solid(state.render_context.fonts[big_font], string_buffer, font_color);
+    SDL_Surface *window_surface = SDL_GetWindowSurface(state.render_context.window);
+
+    SDL_Rect text_position = get_text_position(state.render_context.fonts[big_font], string_buffer);
+
+
+    // Rendering
+    SDL_FillRect(state.render_context.back_buffer, &update_rect, background_color);
+    SDL_BlitSurface(text_surface, NULL, state.render_context.back_buffer, &text_position);
+    SDL_BlitScaled(state.render_context.back_buffer, NULL, window_surface, NULL);
+
+    SDL_FreeSurface(text_surface);
+    SDL_UpdateWindowSurface(state.render_context.window);
+}
+
+Uint32 timer_update(Uint32 interval, void *param)
+{
+    app_state *state = (app_state *)param;
+
+    if (!paused)
     {
-        if (paused)
-        {
-            continue;
-        }
-
-        minutes = state->ticks/60;
+        int minutes = state->ticks/60;
         state->minutes = minutes;
         state->seconds = state->ticks - (minutes * 60);
 
-        if (state->ticks > 0 &&
-            state->app_config.secondary_tick > 0 &&
+        if (state->app_config.secondary_tick > 0 &&
             state->app_config.max_secondary_count > 0 &&
             state->app_config.current_secondary_count < state->app_config.max_secondary_count &&
             is_tick_active(state->ticks, state->app_config.secondary_tick))
@@ -169,7 +217,7 @@ void *timer_update(void *vargp)
             get_sound(&state->sound_buffer);
             SDL_QueueAudio(audio_dev, state->sound_buffer.samples, state->sound_buffer.len);
             state->app_config.current_primary_count++;
-            state->app_config.current_secondary_count = 0;
+            state->app_config.current_secondary_count = 1;
         }
 
         if (state->app_config.current_primary_count == state->app_config.max_primary_count)
@@ -177,18 +225,14 @@ void *timer_update(void *vargp)
             paused = true;
         }
 
+        render(*state, update_rect);
 
-        //sleep(1);
-
-        struct timespec sleep_time;
-        sleep_time.tv_nsec = 0;
-        sleep_time.tv_sec = 1;
-        nanosleep(&sleep_time, NULL);
 
         state->ticks++;
+
     }
 
-    return NULL;
+    return(interval);
 }
 
 int main()
@@ -197,63 +241,28 @@ int main()
 
     SDL_Window *window = NULL;
 
-    int width = 1280, height = 680;
-
-    SDL_Rect update_rect = {};
-    update_rect.x = 0;
-    update_rect.y = 200;
-    update_rect.w = width - 0;
-    update_rect.h = height - 100;
-
-    SDL_Init(SDL_INIT_VIDEO | SDL_INIT_AUDIO);
+    SDL_Init(SDL_INIT_VIDEO | SDL_INIT_TIMER | SDL_INIT_AUDIO);
     TTF_Init();
 
-    TTF_Font *small_font = TTF_OpenFont("data/FiraCode-Regular.ttf", 21);
-    TTF_Font *normal_font = TTF_OpenFont("data/FiraCode-Regular.ttf", 30);
-    TTF_Font *big_font = TTF_OpenFont("data/FiraCode-Regular.ttf", 120);
-
-    window = SDL_CreateWindow("Mutant Sunflower", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, width, height, 
-    SDL_WINDOW_ALLOW_HIGHDPI | SDL_WINDOW_RESIZABLE);
+    window = SDL_CreateWindow("Mutant Sunflower", 
+            SDL_WINDOWPOS_CENTERED, 
+            SDL_WINDOWPOS_CENTERED, 
+            WINDOW_WIDTH, 
+            WINDOW_HEIGHT, 
+            SDL_WINDOW_ALLOW_HIGHDPI | SDL_WINDOW_RESIZABLE);
 
     SDL_Surface *window_surface = SDL_GetWindowSurface(window);
-    SDL_Surface *back_buffer_surface = SDL_CreateRGBSurface(0, width, height, 32, 0, 0, 0, 0);
+    SDL_Surface *back_buffer_surface = SDL_CreateRGBSurface(0, WINDOW_WIDTH, WINDOW_HEIGHT, 32, 0, 0, 0, 0);
     Uint32 background_color = SDL_MapRGB(back_buffer_surface->format, 0, 2, 114);
     SDL_FillRect(back_buffer_surface, NULL, background_color);
 
-    SDL_Color font_color = {255, 99, 99};
-    SDL_Color aux_font_color = {163, 47, 128};
-
-    SDL_Surface *text_surface = NULL;    
-
-    int big_text_width;
-    int big_text_height;
-    TTF_SizeText(big_font, "00:00", &big_text_width, &big_text_height);
-
-    SDL_Rect text_position;
-    text_position.x = (width / 2) - (big_text_width / 2);
-    text_position.y = (height / 2) - (big_text_height / 2);
-    text_position.w = big_text_width;
-    text_position.h = big_text_height;
-
-    int normal_text_width;
-    int normal_text_height;
-    TTF_SizeText(normal_font, exercises[1], &normal_text_width, &normal_text_height);
-
-    SDL_Rect exercise_text_position;
-    exercise_text_position.x = (width / 2) - (normal_text_width / 2);
-    exercise_text_position.y = (height / 2) - 100;
-    exercise_text_position.w = normal_text_width;
-    exercise_text_position.h = normal_text_height;
+    
 
     app_state state = {};
     state.ticks = -10;
 
     q_and_d_workout_t workout = get_q_and_d_workout();
     state.app_config = get_q_and_d_config(workout);
-
-
-
-
 
     app_sound_buffer sound_buffer;
     int bytes_per_sample = sizeof(int16) * 2;
@@ -263,21 +272,24 @@ int main()
     sound_buffer.samples_per_second = 48000;
     sound_buffer.tone_volume = 10000;
     state.sound_buffer = sound_buffer;
+    state.render_context.back_buffer = back_buffer_surface;
+    state.render_context.window = window;
+    state.render_context.fonts[small_font] = TTF_OpenFont("data/FiraCode-Regular.ttf", 21);
+    state.render_context.fonts[normal_font] = TTF_OpenFont("data/FiraCode-Regular.ttf", 30);
+    state.render_context.fonts[big_font] = TTF_OpenFont("data/FiraCode-Regular.ttf", 120);
 
+    q_and_d_workout_sheet(workout, back_buffer_surface, state.render_context.fonts[normal_font], font_color);
     init_audio();
+    render(state, update_rect);
+
 
     char string_buffer[10];
-    
-    pthread_t tid;
-    
-    pthread_create(&tid, NULL, timer_update, (void *)&state);
 
     // button(back_buffer_surface, small_font, 200, 10, "HELP!");
 
-    int previous_seconds = 0;
+    SDL_TimerID main_timer = SDL_AddTimer(1000, timer_update, (void *)&state);
 
-    q_and_d_workout_sheet(workout, back_buffer_surface, normal_font, font_color);
-    while(running && !paused)
+    while(running)
     {
         SDL_Event event;
         SDL_PollEvent(&event);
@@ -308,30 +320,19 @@ int main()
                         running = false;
                     }break;
 
+                    case SDL_SCANCODE_SPACE:
+                    {
+                        paused = !paused;
+                    }
+
                     default:
                     {} break;
                 }
             } break;
         }
 
-        if (previous_seconds == state.seconds)
-        {
-            continue;
-        }
 
-        previous_seconds = state.seconds;
-
-        sprintf(string_buffer, "%02d:%02d", state.minutes, abs(state.seconds));
-        text_surface = TTF_RenderText_Solid(big_font, string_buffer, font_color);
-
-        // Rendering
-        SDL_FillRect(back_buffer_surface, &update_rect, background_color);
-        SDL_BlitSurface(text_surface, NULL, back_buffer_surface, &text_position);
-        SDL_BlitScaled(back_buffer_surface, NULL, window_surface, NULL);
-
-        SDL_FreeSurface(text_surface);
-        SDL_UpdateWindowSurface(window);
-        sleep_ms(500);
+        sleep_ms(250);
     }
 
     SDL_Quit();

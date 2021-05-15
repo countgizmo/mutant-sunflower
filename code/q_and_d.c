@@ -98,6 +98,8 @@ weeks_passed(time_t current_time, time_t start_time)
 internal int
 get_series(int current_series, int weeks)
 {
+    // Series are: 2 - 5
+    // Each series is 20 reps
     int max_series;
     int series;
 
@@ -115,7 +117,7 @@ get_series(int current_series, int weeks)
     do
     {
         series = (rand() % max_series) + 2;
-    } while (weeks > 1 && series == current_series);
+    } while (series == current_series);
 
     return series;
 }
@@ -152,8 +154,16 @@ get_exercise_combo_index(void)
 }
 
 internal void
-copy_text_as_surface(SDL_Surface *dest_surface, char *text, SDL_Rect text_position)
+copy_text_as_surface(SDL_Surface *dest_surface, const char *text, SDL_Rect text_position, TTF_Font *font, SDL_Color font_color)
 {
+    SDL_Surface *text_surface = TTF_RenderText_Solid(font, text, font_color);
+
+    if (SDL_BlitSurface(text_surface, NULL, dest_surface, &text_position) < 0)
+    {
+        printf("(copy_text_as_surface): SDL_BlitSurface failed: %s\n", SDL_GetError());
+    }
+
+    SDL_FreeSurface(text_surface);
 
 }
 
@@ -217,7 +227,7 @@ get_q_and_d_workout(void)
 
     saved_app_data.workout = workout;
 
-    update_save_data_file(data_file_name, &saved_app_data);
+    //update_save_data_file(data_file_name, &saved_app_data);
     
     return workout;
 }
@@ -232,43 +242,15 @@ q_and_d_workout_sheet(q_and_d_workout_t workout, SDL_Surface *dest_surface, TTF_
     text_position.x = 10;
     text_position.y = 10;
 
-    SDL_Surface *ex_combo_surface = TTF_RenderText_Solid(font, exercise_combo[workout.exercise_combo_index], font_color);
-    SDL_Surface *selected_series_surface = TTF_RenderText_Solid(font, series, font_color);
-    SDL_Surface *reps_surface = TTF_RenderText_Solid(font, reps_schemes[workout.reps_index], font_color);
-
-
-    if (SDL_BlitSurface(ex_combo_surface, NULL, dest_surface, &text_position) < 0)
-    {
-        printf("SDL_BlitSurface failed: %s\n", SDL_GetError());
-    }
-
+    copy_text_as_surface(dest_surface, exercise_combo[workout.exercise_combo_index], text_position, font, font_color);
     text_position.y += 30;
-    if (SDL_BlitSurface(selected_series_surface, NULL, dest_surface, &text_position) < 0)
-    {
-        printf("SDL_BlitSurface failed: %s\n", SDL_GetError());
-    }
-
+    copy_text_as_surface(dest_surface, series, text_position, font, font_color);
     text_position.y += 30;
-    if (SDL_BlitSurface(reps_surface, NULL, dest_surface, &text_position) < 0)
-    {
-        printf("SDL_BlitSurface failed: %s\n", SDL_GetError());
-    }
+    copy_text_as_surface(dest_surface, reps_schemes[workout.reps_index], text_position, font, font_color);
 
     if (workout.exercise_combo_index == PU_SWINGS)
     {
         text_position.y += 30;
-
-        SDL_Surface *swings_type_surface = TTF_RenderText_Solid(font, swings_variants[workout.swings_index], font_color);
-
-        if (SDL_BlitSurface(swings_type_surface, NULL, dest_surface, &text_position) < 0)
-        {
-            printf("SDL_BlitSurface failed: %s\n", SDL_GetError());
-        }
-
-        SDL_FreeSurface(swings_type_surface);
+        copy_text_as_surface(dest_surface, swings_variants[workout.swings_index], text_position, font, font_color);
     }
-
-    SDL_FreeSurface(ex_combo_surface);
-    SDL_FreeSurface(selected_series_surface);
-    SDL_FreeSurface(reps_surface);
 }

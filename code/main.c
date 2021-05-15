@@ -292,47 +292,46 @@ int main()
     while(running)
     {
         SDL_Event event;
-        SDL_PollEvent(&event);
-        switch(event.type)
+        while(SDL_PollEvent(&event))
         {
-            case SDL_QUIT:
+            switch(event.type)
             {
-                running = false;
-            } break;
-
-            case SDL_WINDOWEVENT:
-            {
-                switch(event.window.event)
+                case SDL_QUIT:
                 {
-                    case SDL_WINDOWEVENT_SIZE_CHANGED:
-                    {
-                        window_surface = SDL_GetWindowSurface(window);
-                    } break;
-                }
-            } break;
+                    running = false;
+                } break;
 
-            case SDL_KEYDOWN:
-            {
-                switch(event.key.keysym.scancode)
+                case SDL_WINDOWEVENT:
                 {
-                    case SDL_SCANCODE_ESCAPE:
+                    switch(event.window.event)
                     {
-                        running = false;
-                    }break;
-
-                    case SDL_SCANCODE_SPACE:
-                    {
-                        paused = !paused;
+                        case SDL_WINDOWEVENT_SIZE_CHANGED:
+                        {
+                            window_surface = SDL_GetWindowSurface(window);
+                        } break;
                     }
+                } break;
 
-                    default:
-                    {} break;
-                }
-            } break;
+                case SDL_KEYDOWN:
+                {
+                    switch(event.key.keysym.scancode)
+                    {
+                        case SDL_SCANCODE_ESCAPE:
+                        {
+                            running = false;
+                        }break;
+
+                        case SDL_SCANCODE_SPACE:
+                        {
+                            paused = !paused;
+                        }
+
+                        default:
+                        {} break;
+                    }
+                } break;
+            }
         }
-
-
-        sleep_ms(250);
     }
 
     SDL_Quit();

@@ -16,6 +16,11 @@ const char exercise_combo[2][20] = {
     "Push-ups + Swings"
 };
 
+const char exercise_combo_reverse[2][20] = {
+    "Push-ups + Swings",
+    "Snatches"
+};
+
 const int SNATCHES = 0;
 const int PU_SWINGS = 1;
 
@@ -33,6 +38,8 @@ const char reps_schemes[3][5] = {
     "Alt",
     "10/2"
 };
+
+const int series[6] = {2, 3, 3, 4, 4, 5};
 
 typedef struct
 {
@@ -91,35 +98,47 @@ internal int
 weeks_passed(time_t current_time, time_t start_time)
 {
     real32 diff_seconds = difftime(current_time, start_time);
-    int weeks = (diff_seconds / seconds_per_week) + 1;
+    int weeks = ceil((diff_seconds / seconds_per_week));
     return(weeks);
+}
+
+// Returns random 0 - 5 inclusive
+// cause our arrays are 0-indexed our die is magical.
+internal int
+die_roll(void)
+{
+    return(rand() % 6);
+}
+
+internal int
+die_roll_to_coin_flip(int roll)
+{
+    return (roll < 3) ? 0 : 1;
 }
 
 internal int
 get_series(int current_series, int weeks)
 {
-    // Series are: 2 - 5
-    // Each series is 20 reps
     int max_series;
-    int series;
+    int series_index;
 
     if (weeks == 1)
     {
-        max_series = 2;
+        max_series = array_count(series) - 3;
     } else if (weeks == 2)
     {
-        max_series = 3;
+        max_series = array_count(series) - 1;
     } else 
     {
-        max_series = 4;
+        max_series = array_count(series);
     }
     
     do
     {
-        series = (rand() % max_series) + 2;
-    } while (series == current_series);
+        series_index = rand() % max_series;
+    } while (series[series_index] == current_series);
 
-    return series;
+    return series[series_index];
 }
 
 internal int
@@ -150,7 +169,7 @@ get_swings_index(void)
 internal int
 get_exercise_combo_index(void)
 {
-    return(rand() % array_count(exercise_combo));
+    return(die_roll_to_coin_flip(die_roll()));
 }
 
 internal void
@@ -227,7 +246,7 @@ get_q_and_d_workout(void)
 
     saved_app_data.workout = workout;
 
-    //update_save_data_file(data_file_name, &saved_app_data);
+    update_save_data_file(data_file_name, &saved_app_data);
     
     return workout;
 }

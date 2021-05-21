@@ -339,9 +339,3 @@ int main()
 
     return 0;
 }
-
-
-/* IDEAS:
-
-- separate thread that re-renders the graphics? I dunno anymore
-*/

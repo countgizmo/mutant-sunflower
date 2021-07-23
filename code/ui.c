@@ -34,3 +34,53 @@ button(SDL_Surface *target_surface, TTF_Font *font, int x, int y, char *text)
     SDL_FreeSurface(text_surface);
     SDL_FreeSurface(button_surface);
 }
+
+void
+rect(SDL_Surface *target_surface, int x, int y, int w, int h, uint16 border_width, uint32 stroke_color, uint32 fill_color)
+{
+    SDL_Rect destination = {};
+    destination.x = x;
+    destination.y = y;
+    destination.w = w;
+    destination.h = h;
+
+    SDL_Rect outline_area =
+    {
+        .x = 0,
+        .y = 0,
+        .w = w,
+        .h = h
+    };
+
+    SDL_Rect fill_area = 
+    {
+        .x = 0 + border_width,
+        .y = 0 + border_width,
+        .w = w - (2 * border_width),
+        .h = h - (2 * border_width)
+    };
+
+
+    SDL_Surface *rect_surface = SDL_CreateRGBSurface(0, w, h, 32, 0, 0, 0, 0);
+    
+    
+    SDL_FillRect(rect_surface, &outline_area, stroke_color);
+    SDL_FillRect(rect_surface, &fill_area, fill_color);
+
+    SDL_BlitSurface(rect_surface, NULL, target_surface, &destination);
+    SDL_FreeSurface(rect_surface);
+}
+
+internal void
+copy_text_as_surface(SDL_Surface *dest_surface, const char *text, SDL_Rect text_position, TTF_Font *font, SDL_Color font_color)
+{
+    SDL_Surface *text_surface = TTF_RenderText_Solid(font, text, font_color);
+
+    if (SDL_BlitSurface(text_surface, NULL, dest_surface, &text_position) < 0)
+    {
+        printf("(copy_text_as_surface): SDL_BlitSurface failed: %s\n", SDL_GetError());
+    }
+
+    SDL_FreeSurface(text_surface);
+
+}

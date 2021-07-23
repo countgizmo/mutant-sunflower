@@ -172,20 +172,6 @@ get_exercise_combo_index(void)
     return(die_roll_to_coin_flip(die_roll()));
 }
 
-internal void
-copy_text_as_surface(SDL_Surface *dest_surface, const char *text, SDL_Rect text_position, TTF_Font *font, SDL_Color font_color)
-{
-    SDL_Surface *text_surface = TTF_RenderText_Solid(font, text, font_color);
-
-    if (SDL_BlitSurface(text_surface, NULL, dest_surface, &text_position) < 0)
-    {
-        printf("(copy_text_as_surface): SDL_BlitSurface failed: %s\n", SDL_GetError());
-    }
-
-    SDL_FreeSurface(text_surface);
-
-}
-
 internal app_config_t 
 get_q_and_d_config(q_and_d_workout_t workout)
 {
@@ -235,10 +221,6 @@ get_q_and_d_workout(void)
     
     int weeks = weeks_passed(current_time, saved_app_data.start_time);
 
-    //TODO(evgheni): remove when debugging is done
-    printf("weeks: %d\n", weeks);
-    printf("previous reps: %d\n", saved_app_data.workout.series);
-
     workout.exercise_combo_index = get_exercise_combo_index();
     workout.series = get_series(saved_app_data.workout.series, weeks);
     workout.reps_index = get_reps(weeks);
@@ -249,27 +231,4 @@ get_q_and_d_workout(void)
     update_save_data_file(data_file_name, &saved_app_data);
     
     return workout;
-}
-
-internal void
-q_and_d_workout_sheet(q_and_d_workout_t workout, SDL_Surface *dest_surface, TTF_Font *font, SDL_Color font_color)
-{
-    char series[10];
-    sprintf(series, "Series: %d", workout.series);
-
-    SDL_Rect text_position;
-    text_position.x = 10;
-    text_position.y = 10;
-
-    copy_text_as_surface(dest_surface, exercise_combo[workout.exercise_combo_index], text_position, font, font_color);
-    text_position.y += 30;
-    copy_text_as_surface(dest_surface, series, text_position, font, font_color);
-    text_position.y += 30;
-    copy_text_as_surface(dest_surface, reps_schemes[workout.reps_index], text_position, font, font_color);
-
-    if (workout.exercise_combo_index == PU_SWINGS)
-    {
-        text_position.y += 30;
-        copy_text_as_surface(dest_surface, swings_variants[workout.swings_index], text_position, font, font_color);
-    }
 }

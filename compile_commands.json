@@ -1,0 +1,39 @@
+[
+  {
+    "directory": "/Users/ziggy/Projects/private/c/mutant-sunflower/",
+    "file": "main.c",
+    "arguments": [
+      "/Library/Developer/CommandLineTools/usr/bin/clang",
+      "-xc",
+      "main.c",
+      "-o",
+      "/var/folders/ht/96pkcsvj46n_k29djvkr14q00000gn/T/main-c895ae.o",
+      "-Wall",
+      "-Wextra",
+      "-pedantic",
+      "-ggdb",
+      "-I/Library/Frameworks/SDL2.framework/Headers",
+      "-I/Library/Frameworks/SDL2_ttf.framework/Headers",
+      "-F/Library/Frameworks/SDL2.framework",
+      "-F/Library/Frameworks",
+      "-Wno-reorder-init-list",
+      "-Wno-implicit-int-float-conversion",
+      "-Wno-c99-designator",
+      "-Wno-final-dtor-non-final-class",
+      "-Wno-extra-semi-stmt",
+      "-Wno-misleading-indentation",
+      "-Wno-quoted-include-in-framework-header",
+      "-Wno-implicit-fallthrough",
+      "-Wno-enum-enum-conversion",
+      "-Wno-enum-float-conversion",
+      "-Wno-elaborated-enum-base",
+      "-Wno-reserved-identifier",
+      "-Wno-gnu-folding-constant",
+      "-isysroot",
+      "/Library/Developer/CommandLineTools/SDKs/MacOSX.sdk",
+      "-mmacos-version-min=14.0",
+      "--target=x86_64-apple-macosx14.0.0"
+    ]
+  }
+]
+

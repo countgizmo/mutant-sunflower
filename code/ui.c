@@ -1,6 +1,6 @@
 #include "ui.h"
 
-void 
+void
 button(SDL_Surface *target_surface, TTF_Font *font, int x, int y, char *text)
 {
     int text_width;
@@ -52,7 +52,7 @@ rect(SDL_Surface *target_surface, int x, int y, int w, int h, uint16 border_widt
         .h = h
     };
 
-    SDL_Rect fill_area = 
+    SDL_Rect fill_area =
     {
         .x = 0 + border_width,
         .y = 0 + border_width,
@@ -62,8 +62,8 @@ rect(SDL_Surface *target_surface, int x, int y, int w, int h, uint16 border_widt
 
 
     SDL_Surface *rect_surface = SDL_CreateRGBSurface(0, w, h, 32, 0, 0, 0, 0);
-    
-    
+
+
     SDL_FillRect(rect_surface, &outline_area, stroke_color);
     SDL_FillRect(rect_surface, &fill_area, fill_color);
 

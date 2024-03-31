@@ -2,7 +2,7 @@
 #include <stdbool.h>
 #include <unistd.h>
 #include <pthread.h>
-#include <SDL2/SDL.h>
+#include <SDL.h>
 #include <SDL_ttf.h>
 
 #define internal static
@@ -32,8 +32,9 @@ typedef double real64;
 global_variable bool running = true;
 global_variable bool paused = true;
 global_variable SDL_AudioDeviceID audio_dev;
-global_variable SDL_Color font_color = {255, 99, 99};
-global_variable SDL_Color aux_font_color = {163, 47, 128};
+global_variable SDL_Color font_color = {255, 99, 99, 00};
+const int FPS = 30;
+const int frame_delay = 1000 / FPS;
 
 enum font_type {small_font, normal_font, big_font};
 
@@ -66,9 +67,6 @@ typedef struct
     TTF_Font *fonts[3];
 } render_context_t;
 
-
-global_variable int width = 1280, height = 680;
-
 #include "ui.c"
 #include "q_and_d.c"
 
@@ -84,8 +82,7 @@ typedef struct
     q_and_d_workout_t q_and_d_workout;
 } app_state;
 
-void
-init_audio()
+void init_audio(void)
 {
     SDL_AudioSpec want, have;
     SDL_zero(want);
@@ -99,8 +96,8 @@ init_audio()
     if (audio_dev == 0)
     {
         SDL_Log("Failed to open audio device: %s", SDL_GetError());
-    } 
-    else 
+    }
+    else
     {
         if (have.format != want.format)
         {
@@ -129,23 +126,12 @@ get_sound(app_sound_buffer *sound_buffer)
         *sample_output++ = sample_value;
 
         sine_t += 2.0f * Pi32 * 1.0f / (real32)wave_period;
-    } 
+    }
 }
 
 bool is_tick_active(int current_ticks, int tick)
 {
     return current_ticks % tick == 0;
-}
-
-void 
-sleep_ms(int milliseconds)
-{
-    uint64 nanoseconds = milliseconds * 1000000L;
-
-    struct timespec sleep_time;
-    sleep_time.tv_nsec = nanoseconds;
-    sleep_time.tv_sec = 0;
-    nanosleep(&sleep_time, NULL);
 }
 
 SDL_Rect
@@ -171,18 +157,15 @@ render_timeline(app_state state)
     local_persist uint16 bar_h = 25;
     local_persist uint16 bar_x = 20;
     local_persist uint16 bar_y = 250;
-    local_persist uint16 primary_step_width = 6;
-    local_persist uint16 marker_height = 60;
-    local_persist uint16 marker_width = 6;
     local_persist uint16 border_width = 3;
 
     int primary_steps = bar_w / state.app_config.max_primary_count;
 
     // Render the bar
-    rect(state.render_context.back_buffer, 
-        bar_x, 
-        bar_y, 
-        bar_w, 
+    rect(state.render_context.back_buffer,
+        bar_x,
+        bar_y,
+        bar_w,
         bar_h,
         border_width,
         SDL_COLOR_FOREGROUND(state.render_context.back_buffer),
@@ -194,10 +177,10 @@ render_timeline(app_state state)
 
     if (current_position > 0)
     {
-        rect(state.render_context.back_buffer, 
-            bar_x, 
-            bar_y, 
-            current_position, 
+        rect(state.render_context.back_buffer,
+            bar_x,
+            bar_y,
+            current_position,
             bar_h,
             border_width,
             SDL_COLOR_FOREGROUND(state.render_context.back_buffer),
@@ -208,10 +191,10 @@ render_timeline(app_state state)
     // Don't want to draw the first notch
     for (int i = 1; i < state.app_config.max_primary_count; i++)
     {
-        rect(state.render_context.back_buffer, 
+        rect(state.render_context.back_buffer,
             bar_x + (primary_steps * i),
             bar_y,
-            3, 
+            3,
             bar_h,
             0,
             SDL_COLOR_AUX(state.render_context.back_buffer),
@@ -284,11 +267,10 @@ render(app_state state)
     SDL_UpdateWindowSurface(state.render_context.window);
 }
 
-uint32 
-timer_update(Uint32 interval, void *param)
-{
-    app_state *state = (app_state *)param;
 
+void
+update_timer(app_state *state)
+{
     if (!paused)
     {
         int minutes = state->ticks/60;
@@ -305,7 +287,7 @@ timer_update(Uint32 interval, void *param)
             SDL_QueueAudio(audio_dev, state->sound_buffer.samples, state->sound_buffer.len);
             state->app_config.current_secondary_count++;
         }
-        
+
         if (state->ticks > 0 &&
             is_tick_active(state->ticks, state->app_config.primary_tick) &&
             (state->app_config.current_primary_count < state->app_config.max_primary_count))
@@ -321,38 +303,33 @@ timer_update(Uint32 interval, void *param)
         {
             paused = true;
         }
-
         state->ticks++;
-
     }
 
-    render(*state);
-
-    return(interval);
+    return;
 }
 
-int main()
+int main(void)
 {
     SDL_DisableScreenSaver();
 
     SDL_Window *window = NULL;
 
-    SDL_Init(SDL_INIT_VIDEO | SDL_INIT_TIMER | SDL_INIT_AUDIO);
+    SDL_Init(SDL_INIT_VIDEO | SDL_INIT_AUDIO);
     TTF_Init();
 
-    window = SDL_CreateWindow("Mutant Sunflower", 
-            SDL_WINDOWPOS_CENTERED, 
-            SDL_WINDOWPOS_CENTERED, 
-            WINDOW_WIDTH, 
-            WINDOW_HEIGHT, 
+    window = SDL_CreateWindow("Mutant Sunflower",
+            SDL_WINDOWPOS_CENTERED,
+            SDL_WINDOWPOS_CENTERED,
+            WINDOW_WIDTH,
+            WINDOW_HEIGHT,
             SDL_WINDOW_ALLOW_HIGHDPI | SDL_WINDOW_RESIZABLE);
 
-    SDL_Surface *window_surface = SDL_GetWindowSurface(window);
     SDL_Surface *back_buffer_surface = SDL_CreateRGBSurface(0, WINDOW_WIDTH, WINDOW_HEIGHT, 32, 0, 0, 0, 0);
 
     SDL_FillRect(back_buffer_surface, NULL, SDL_COLOR_BACKGROUND(back_buffer_surface));
 
-    app_state state = {};
+    app_state state = {0};
     state.ticks = -10;
 
     q_and_d_workout_t workout = get_q_and_d_workout();
@@ -377,48 +354,44 @@ int main()
     init_audio();
     render(state);
 
-
-    SDL_TimerID main_timer = SDL_AddTimer(1000, timer_update, (void *)&state);
+    uint32 frame_start;
+    int frame_time;
+    int tick = 0;
 
     while(running)
     {
+        frame_start = SDL_GetTicks();
+
         SDL_Event event;
         while(SDL_PollEvent(&event))
         {
             switch(event.type)
             {
-                case SDL_QUIT:
-                {
+                case SDL_QUIT: {
                     running = false;
                 } break;
 
-                case SDL_WINDOWEVENT:
-                {
+                case SDL_WINDOWEVENT: {
                     switch(event.window.event)
                     {
-                        case SDL_WINDOWEVENT_SIZE_CHANGED:
-                        {
-                            window_surface = SDL_GetWindowSurface(window);
+                        case SDL_WINDOWEVENT_SIZE_CHANGED: {
                         } break;
                     }
                 } break;
 
-                case SDL_KEYDOWN:
-                {
+                case SDL_KEYDOWN: {
                     switch(event.key.keysym.scancode)
                     {
-                        case SDL_SCANCODE_ESCAPE:
-                        {
+                        case SDL_SCANCODE_ESCAPE: {
                             running = false;
+                            SDL_Quit();
                         }break;
 
-                        case SDL_SCANCODE_SPACE:
-                        {
+                        case SDL_SCANCODE_SPACE: {
                             paused = !paused;
                         }break;
 
-                        case SDL_SCANCODE_I:
-                        {
+                        case SDL_SCANCODE_I: {
                             state.show_info = !state.show_info;
                         }break;
 
@@ -428,9 +401,27 @@ int main()
                 } break;
             }
         }
-        sleep_ms(100);
+
+        render(state);
+
+        if (running) {
+            frame_time = SDL_GetTicks() - frame_start;
+            tick += frame_time;
+            if (frame_delay > frame_time) {
+                int sleep_time = frame_delay - frame_time;
+                tick += sleep_time;
+                SDL_Delay(sleep_time);
+            }
+
+            if (tick >= 1000) {
+                update_timer(&state);
+                tick = 0;
+            }
+        }
     }
 
+
+    SDL_DestroyWindow(state.render_context.window);
     SDL_Quit();
 
     return 0;

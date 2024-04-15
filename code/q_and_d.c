@@ -1,6 +1,6 @@
 /**
  * Based on the books "The Quick and the Dead"
- * 
+ *
  * Creates a training plan for the day based on the instructions from the book.
  */
 
@@ -59,7 +59,7 @@ typedef struct
 typedef struct
 {
     time_t start_time;
-    q_and_d_workout_t workout; 
+    q_and_d_workout_t workout;
 } save_data_t;
 
 internal void
@@ -128,11 +128,11 @@ get_series(int current_series, int weeks)
     } else if (weeks == 2)
     {
         max_series = array_count(series) - 1;
-    } else 
+    } else
     {
         max_series = array_count(series);
     }
-    
+
     do
     {
         series_index = rand() % max_series;
@@ -172,7 +172,7 @@ get_exercise_combo_index(void)
     return(die_roll_to_coin_flip(die_roll()));
 }
 
-internal app_config_t 
+internal app_config_t
 get_q_and_d_config(q_and_d_workout_t workout)
 {
     app_config_t config;
@@ -218,7 +218,7 @@ get_q_and_d_workout(void)
     save_data_t saved_app_data = {};
     init_save_data_file(data_file_name, &saved_app_data, current_time);
     read_save_data_file(data_file_name, &saved_app_data);
-    
+
     int weeks = weeks_passed(current_time, saved_app_data.start_time);
 
     workout.exercise_combo_index = get_exercise_combo_index();
@@ -229,6 +229,6 @@ get_q_and_d_workout(void)
     saved_app_data.workout = workout;
 
     update_save_data_file(data_file_name, &saved_app_data);
-    
+
     return workout;
 }

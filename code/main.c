@@ -33,7 +33,7 @@ global_variable bool running = true;
 global_variable bool paused = true;
 global_variable SDL_AudioDeviceID audio_dev;
 global_variable SDL_Color font_color = {255, 99, 99, 00};
-const int FPS = 30;
+const int FPS = 5; //it's a timer, we don't need to refresh it often
 const int frame_delay = 1000 / FPS;
 
 enum font_type {small_font, normal_font, big_font};
@@ -309,6 +309,44 @@ update_timer(app_state *state)
     return;
 }
 
+void handle_event(SDL_Event event, app_state *state)
+{
+    switch(event.type)
+    {
+        case SDL_QUIT: {
+            running = false;
+        } break;
+
+        case SDL_WINDOWEVENT: {
+            switch(event.window.event)
+            {
+                case SDL_WINDOWEVENT_SIZE_CHANGED: {
+                } break;
+            }
+        } break;
+
+        case SDL_KEYDOWN: {
+            switch(event.key.keysym.scancode)
+            {
+                case SDL_SCANCODE_ESCAPE: {
+                    running = false;
+                }break;
+
+                case SDL_SCANCODE_SPACE: {
+                    paused = !paused;
+                }break;
+
+                case SDL_SCANCODE_I: {
+                    state->show_info = !state->show_info;
+                    SDL_Log("Show_info = %d", state->show_info);
+                }break;
+
+                default: {} break;
+            }
+        } break;
+    }
+}
+
 int main(void)
 {
     SDL_DisableScreenSaver();
@@ -363,60 +401,28 @@ int main(void)
         frame_start = SDL_GetTicks();
 
         SDL_Event event;
-        while(SDL_PollEvent(&event))
+        while (running && paused && SDL_WaitEvent(&event))
         {
-            switch(event.type)
-            {
-                case SDL_QUIT: {
-                    running = false;
-                } break;
-
-                case SDL_WINDOWEVENT: {
-                    switch(event.window.event)
-                    {
-                        case SDL_WINDOWEVENT_SIZE_CHANGED: {
-                        } break;
-                    }
-                } break;
-
-                case SDL_KEYDOWN: {
-                    switch(event.key.keysym.scancode)
-                    {
-                        case SDL_SCANCODE_ESCAPE: {
-                            running = false;
-                            SDL_Quit();
-                        }break;
-
-                        case SDL_SCANCODE_SPACE: {
-                            paused = !paused;
-                        }break;
-
-                        case SDL_SCANCODE_I: {
-                            state.show_info = !state.show_info;
-                        }break;
-
-                        default:
-                        {} break;
-                    }
-                } break;
-            }
+            handle_event(event, &state);
+            render(state);
+        }
+        while (!paused && SDL_PollEvent(&event))
+        {
+            handle_event(event, &state);
         }
 
         render(state);
+        frame_time = SDL_GetTicks() - frame_start;
+        tick += frame_time;
+        if (frame_delay > frame_time) {
+            int sleep_time = frame_delay - frame_time;
+            tick += sleep_time;
+            SDL_Delay(sleep_time);
+        }
 
-        if (running) {
-            frame_time = SDL_GetTicks() - frame_start;
-            tick += frame_time;
-            if (frame_delay > frame_time) {
-                int sleep_time = frame_delay - frame_time;
-                tick += sleep_time;
-                SDL_Delay(sleep_time);
-            }
-
-            if (tick >= 1000) {
-                update_timer(&state);
-                tick = 0;
-            }
+        if (tick >= 1000) {
+            update_timer(&state);
+            tick = 0;
         }
     }
 

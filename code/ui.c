@@ -1,7 +1,4 @@
-#include "ui.h"
-
-void
-button(SDL_Surface *target_surface, TTF_Font *font, int x, int y, char *text)
+void button(SDL_Surface *target_surface, TTF_Font *font, int x, int y, char *text)
 {
     int text_width;
     int text_height;
